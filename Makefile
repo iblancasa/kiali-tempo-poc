@@ -1,3 +1,4 @@
+K8S_VERSION = 1.22
 ISTIO_VERSION ?= "1.17.0"
 ISTIO_SHORT_VERSION = "$(shell echo $(ISTIO_VERSION) | grep -oE '[0-9]\.[0-9]+')"
 
@@ -7,6 +8,8 @@ $(LOCALBIN):
 
 ISTIOCTL ?= $(LOCALBIN)/istioctl
 KIND ?= $(LOCALBIN)/kind
+TANKA ?= $(LOCALBIN)/tk
+JB ?= $(LOCALBIN)/jb
 
 # Install kind
 .PHONY: kind
@@ -22,25 +25,37 @@ $(ISTIOCTL): $(LOCALBIN)
 	mv $(LOCALBIN)/istio-$(ISTIO_VERSION)/bin/istioctl $(LOCALBIN)
 	rm -rf $(LOCALBIN)/istio-$(ISTIO_VERSION)
 
+# Install tanka
+.PHONY: tanka
+tanka: $(TANKA)
+$(TANKA): $(LOCALBIN)
+	GOBIN=$(LOCALBIN) go install github.com/grafana/tanka/cmd/tk@latest
+
+# Install jb
+.PHONY: jb
+jb: $(JB)
+$(JB): $(LOCALBIN)
+	GOBIN=$(LOCALBIN) go install github.com/jsonnet-bundler/jsonnet-bundler/cmd/jb@latest
+
 # Start kind cluster
 .PHONY: start-kind
-start-kind:
+start-kind: kind
 	echo "Starting KIND cluster..."
 	$(KIND) create cluster --config config/kind.yaml 2>&1 | grep -v "already exists" || true
 
 # Install Istio in the cluster
 .PHONY: install-istio
-install-istio: istioctl
+deploy-istio: istioctl
 	$(ISTIOCTL) install --set profile=demo -y
 
 # Install the Prometheus addon
 .PHONY: install-prometheus
-install-prometheus:
+deploy-prometheus:
 	kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-$(ISTIO_SHORT_VERSION)/samples/addons/prometheus.yaml
 
 # Install the Kiali addon
 .PHONY: install-kiali
-install-kiali:
+deploy-kiali:
 	kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-$(ISTIO_SHORT_VERSION)/samples/addons/kiali.yaml
 
 # Uninstall the Kiali addon
@@ -48,6 +63,13 @@ install-kiali:
 uninstall-kiali:
 	kubectl delete -f https://raw.githubusercontent.com/istio/istio/release-$(ISTIO_SHORT_VERSION)/samples/addons/kiali.yaml
 
-# Prepare the environment
-.PHONY: prepare-env
-prepare-env: install-istio
+# Create the Tempo deployment files
+.PHONY: install-tempo
+install-tempo: tanka jb
+	PATH=$(PATH):$(LOCALBIN) ./hack/install-tempo.sh
+
+# Deploy Tempo in the cluster
+.PHONY: deploy-tempo
+deploy-tempo:
+	kubectl apply -f ./config/minio.yaml -n tempo
+	echo yes | $(TANKA) apply tempo/environments/tempo/main.jsonnet
