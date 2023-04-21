@@ -91,6 +91,7 @@ data:
       view_only_mode: false
     external_services:
       tracing:
+        url: http://localhost/
         in_cluster_url: http://query-frontend.tempo.svc.cluster.local:16685
       custom_dashboards:
         enabled: true

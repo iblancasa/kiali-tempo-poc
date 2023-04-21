@@ -58,12 +58,10 @@ start-kind: kind
 	kubectl apply -f https://kind.sigs.k8s.io/examples/loadbalancer/metallb-config.yaml
 
 
-# Install Istio in the cluster
 .PHONY: install-istio
 deploy-istio: istioctl
 	$(ISTIOCTL) install --set profile=demo -y --set meshConfig.defaultConfig.tracing.zipkin.address=distributor.tempo.svc.cluster.local:9411
 
-# Install the Prometheus addon
 .PHONY: install-prometheus
 deploy-prometheus:
 	kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-$(ISTIO_SHORT_VERSION)/samples/addons/prometheus.yaml
@@ -76,16 +74,19 @@ deploy-kiali:
 deploy-prometheus:
 	kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-$(ISTIO_SHORT_VERSION)/samples/addons/prometheus.yaml
 
-# Deploy Tempo in the cluster
 .PHONY: deploy-tempo
 deploy-tempo: tanka jb
 	kubectl create namespace tempo 2>&1 | grep -v "already exists" || true
 	kubectl apply -f ./config/minio.yaml -n tempo
 	PATH=$(PATH):$(LOCALBIN) ./hack/install-tempo.sh
 	cd tempo && echo yes | $(TANKA) apply environments/tempo/main.jsonnet
+	kubectl create -f config/ingress.yaml
 
 .PHONY: deploy-bookinfo
 deploy-bookinfo:
 	kubectl label namespace default istio-injection=enabled
 	kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-${ISTIO_SHORT_VERSION}/samples/bookinfo/platform/kube/bookinfo.yaml
 	kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.17/samples/bookinfo/networking/bookinfo-gateway.yaml
+
+.PHONY: deploy-all
+deploy-all: start-kind deploy-istio deploy-bookinfo deploy-prometheus deploy-tempo deploy-kiali
