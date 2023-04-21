@@ -2,9 +2,6 @@
 
 # Steps from https://grafana.com/docs/tempo/latest/setup/tanka/
 
-# Create the namespace
-kubectl create namespace tempo 2>&1 | grep -v "already exists" || true
-
 # Restart folder 
 rm -rf tempo
 mkdir tempo
@@ -45,6 +42,7 @@ tempo {
     tempo_distributor_container+:: container.withPorts([
             containerPort.new('jaeger-grpc', 14250),
             containerPort.new('otlp-grpc', 4317),
+            containerPort.new('http-zipkin', 9411)
         ]),
 
     _config+:: {
@@ -85,6 +83,9 @@ tempo {
                             endpoint: '0.0.0.0:4317',
                         },
                     },
+                },
+                zipkin: {
+                    endpoint: '0.0.0.0:9411',
                 },
             },
         },

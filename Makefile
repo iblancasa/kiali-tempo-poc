@@ -46,7 +46,7 @@ start-kind: kind
 # Install Istio in the cluster
 .PHONY: install-istio
 deploy-istio: istioctl
-	$(ISTIOCTL) install --set profile=demo -y
+	$(ISTIOCTL) install --set profile=demo -y --set meshConfig.defaultConfig.tracing.zipkin.address=distributor.tempo.svc.cluster.local:9411
 
 # Install the Prometheus addon
 .PHONY: install-prometheus
@@ -71,5 +71,12 @@ install-tempo: tanka jb
 # Deploy Tempo in the cluster
 .PHONY: deploy-tempo
 deploy-tempo:
+	kubectl create namespace tempo 2>&1 | grep -v "already exists" || true
 	kubectl apply -f ./config/minio.yaml -n tempo
-	echo yes | $(TANKA) apply tempo/environments/tempo/main.jsonnet
+	cd tempo && echo yes | $(TANKA) apply environments/tempo/main.jsonnet
+
+.PHONY: deploy-bookinfo
+deploy-bookinfo:
+	kubectl label namespace default istio-injection=enabled
+	kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-${ISTIO_SHORT_VERSION}/samples/bookinfo/platform/kube/bookinfo.yaml
+	kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-1.17/samples/bookinfo/networking/bookinfo-gateway.yaml
