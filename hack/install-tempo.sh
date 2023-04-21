@@ -39,11 +39,17 @@ tempo {
         tempo_query: 'grafana/tempo-query:latest',
     },
 
+    tempo_query_container+:: container.withPorts([
+        containerPort.new('jaeger-grpc', 16685),
+        containerPort.new('jaeger-ui', 16686),
+        containerPort.new('jaeger-metrics', 16687),
+    ]),
+
     tempo_distributor_container+:: container.withPorts([
-            containerPort.new('jaeger-grpc', 14250),
-            containerPort.new('otlp-grpc', 4317),
-            containerPort.new('http-zipkin', 9411)
-        ]),
+        containerPort.new('jaeger-grpc', 14250),
+        containerPort.new('otlp-grpc', 4317),
+        containerPort.new('http-zipkin', 9411)
+    ]),
 
     _config+:: {
         namespace: 'tempo',
