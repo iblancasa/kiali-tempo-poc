@@ -63,16 +63,13 @@ deploy-kiali:
 uninstall-kiali:
 	kubectl delete -f https://raw.githubusercontent.com/istio/istio/release-$(ISTIO_SHORT_VERSION)/samples/addons/kiali.yaml
 
-# Create the Tempo deployment files
-.PHONY: install-tempo
-install-tempo: tanka jb
-	PATH=$(PATH):$(LOCALBIN) ./hack/install-tempo.sh
 
 # Deploy Tempo in the cluster
 .PHONY: deploy-tempo
-deploy-tempo:
+deploy-tempo: tanka jb
 	kubectl create namespace tempo 2>&1 | grep -v "already exists" || true
 	kubectl apply -f ./config/minio.yaml -n tempo
+	PATH=$(PATH):$(LOCALBIN) ./hack/install-tempo.sh
 	cd tempo && echo yes | $(TANKA) apply environments/tempo/main.jsonnet
 
 .PHONY: deploy-bookinfo
