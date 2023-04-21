@@ -42,6 +42,12 @@ $(JB): $(LOCALBIN)
 start-kind: kind
 	echo "Starting KIND cluster..."
 	$(KIND) create cluster --config config/kind.yaml 2>&1 | grep -v "already exists" || true
+	# Load balancer
+	kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.7/config/manifests/metallb-native.yaml
+	sleep 60 # Sometimes, wait fails because the resources are not there
+	kubectl wait --namespace metallb-system --for=condition=ready pod --selector=app=metallb --timeout=90s
+	kubectl apply -f https://kind.sigs.k8s.io/examples/loadbalancer/metallb-config.yaml
+
 
 # Install Istio in the cluster
 .PHONY: install-istio
@@ -58,11 +64,9 @@ deploy-prometheus:
 deploy-kiali:
 	kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-$(ISTIO_SHORT_VERSION)/samples/addons/kiali.yaml
 
-# Uninstall the Kiali addon
-.PHONY: uninstall-kiali
-uninstall-kiali:
-	kubectl delete -f https://raw.githubusercontent.com/istio/istio/release-$(ISTIO_SHORT_VERSION)/samples/addons/kiali.yaml
-
+.PHONY: deploy-prometheus
+deploy-prometheus:
+	kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-$(ISTIO_SHORT_VERSION)/samples/addons/prometheus.yaml
 
 # Deploy Tempo in the cluster
 .PHONY: deploy-tempo
