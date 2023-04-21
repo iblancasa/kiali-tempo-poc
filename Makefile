@@ -1,4 +1,4 @@
-K8S_VERSION = 1.22
+K8S_VERSION = 1.25
 ISTIO_VERSION ?= "1.17.0"
 ISTIO_SHORT_VERSION = "$(shell echo $(ISTIO_VERSION) | grep -oE '[0-9]\.[0-9]+')"
 
@@ -42,9 +42,18 @@ $(JB): $(LOCALBIN)
 start-kind: kind
 	echo "Starting KIND cluster..."
 	$(KIND) create cluster --config config/kind.yaml 2>&1 | grep -v "already exists" || true
+
+	kubectl wait --timeout=5m --for=condition=available deployment/coredns -n kube-system
+
+	# Ingress Controller
+	kubectl create -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.0.1/deploy/static/provider/kind/deploy.yaml
+	kubectl wait --namespace ingress-nginx \
+		--for=condition=ready pod \
+		--selector=app.kubernetes.io/component=controller \
+		--timeout=90s
+
 	# Load balancer
 	kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/v0.13.7/config/manifests/metallb-native.yaml
-	sleep 60 # Sometimes, wait fails because the resources are not there
 	kubectl wait --namespace metallb-system --for=condition=ready pod --selector=app=metallb --timeout=90s
 	kubectl apply -f https://kind.sigs.k8s.io/examples/loadbalancer/metallb-config.yaml
 
@@ -59,10 +68,9 @@ deploy-istio: istioctl
 deploy-prometheus:
 	kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-$(ISTIO_SHORT_VERSION)/samples/addons/prometheus.yaml
 
-# Install the Kiali addon
-.PHONY: install-kiali
+.PHONY: deploy-kiali
 deploy-kiali:
-	kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-$(ISTIO_SHORT_VERSION)/samples/addons/kiali.yaml
+	kubectl apply -f config/kiali.yaml
 
 .PHONY: deploy-prometheus
 deploy-prometheus:

@@ -40,7 +40,7 @@ tempo {
     },
 
     tempo_query_container+:: container.withPorts([
-        containerPort.new('jaeger-grpc', 16685),
+        containerPort.new('grpc-query', 16685),
         containerPort.new('jaeger-ui', 16686),
         containerPort.new('jaeger-metrics', 16687),
     ]),
