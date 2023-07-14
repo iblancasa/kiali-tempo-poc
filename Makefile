@@ -62,10 +62,6 @@ start-kind: kind
 deploy-istio: istioctl
 	$(ISTIOCTL) install --set profile=demo -y --set meshConfig.defaultConfig.tracing.zipkin.address=distributor.tempo.svc.cluster.local:9411
 
-.PHONY: install-prometheus
-deploy-prometheus:
-	kubectl apply -f https://raw.githubusercontent.com/istio/istio/release-$(ISTIO_SHORT_VERSION)/samples/addons/prometheus.yaml
-
 .PHONY: deploy-kiali
 deploy-kiali:
 	kubectl apply -f config/kiali.yaml
