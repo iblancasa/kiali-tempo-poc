@@ -100,6 +100,8 @@ tempo {
             replicas: 1,
             ephemeral_storage_request_size: '3Gi',
             ephemeral_storage_limit_size: '6Gi',
+            pvc_size: '10Gi',
+            pvc_storage_class: 'local-path',
         },
         memcached+: {
             replicas: 1,
